@@ -1,190 +1,246 @@
-# Omega Finalization Stage
+# SARAA
 
-## Overview
+SARAA is an AI-powered Suspicious Activity Report narrative generation system built for banking compliance workflows. It converts transaction alerts, customer KYC, account activity, and rule-engine outputs into regulator-ready SAR narratives with full auditability, traceability, and human review support.
 
-The Omega finalization stage is the final step in the SAR generation pipeline. It takes a validated `ClaimObject` from the Delta stage (claim generation) and produces a finalized SAR report ready for regulatory filing.
+---
 
-## Pipeline Position
+# Overview
 
-```
-Alpha (Ingestion) → Beta (KYC Enrichment) → Gamma (Rules Engine)
-→ Delta (Claim Generation) → Omega Finalization (YOU ARE HERE)
-```
+Financial crime compliance teams spend significant time drafting SAR narratives manually, often stitching together fragmented data from alerts, case systems, KYC records, transaction histories, and investigative notes.
 
-## Responsibilities
+SARAA reduces that effort by structuring the pipeline into auditable stages:
 
-1. **Take ClaimObject** from Delta stage (`claim_gen.generate_claim()`)
-2. **Generate SAR Narrative** via RAG pipeline + LLM (placeholder implementation)
-3. **Log Audit Events** to `audit_logs` table:
-   - `SAR_GENERATION_STARTED`
-   - `SAR_REPORT_GENERATED`
-   - `SAR_REPORT_SUBMITTED` (optional, if filing)
-4. **Update Claim Audit Trail** with Omega stage actions
-5. **Return Finalized Claim** ready for regulatory filing
+- Ingestion
+- Enrichment
+- Rule evaluation
+- Claim generation
+- Narrative drafting
+- Final compliance validation
 
-## Integration Points
+The system was designed as a hackathon-grade but production-minded solution for the Barclays Hack-O-Hire challenge. It emphasizes transparency, explainability, and end-to-end traceability so that every generated narrative can be defended during internal review or regulatory scrutiny.
 
-### INPUT: Delta Stage (Claim Generation)
+---
 
-```python
-from claim_gen.claim_gen import generate_claim
+# Problem Statement
 
-claim = generate_claim(
-    case_id="sar-123",
-    alert_ids=["alert-1"],
-    customer_data={...},
-    pipeline_transforms=[...],
-    rule_results={...},
-    fraud_scores={...},
-    rag_results={...},
-)
-```
+SAR filing is mandatory whenever banks detect suspicious activity that may indicate money laundering, fraud, or related financial crime.
 
-### OUTPUT: Finalized Claim + Audit Events
+However, drafting the narrative is usually:
 
-```python
-from backend.omega.omega_finalization import run_omega
+- Manual
+- Slow
+- Inconsistent
 
-omega_result = run_omega(omega_input)
-# Returns:
-# {
-#     "case_id": str,
-#     "claim": Dict[str, Any],      # Finalized ClaimObject
-#     "narrative": str,              # SAR narrative text
-#     "audit_events": List[Dict],    # AuditLog entries created
-# }
-```
+Analysts must interpret complex transaction patterns, connect them to customer context, and write a clear report that meets regulatory expectations.
 
-### AUDIT TRAIL CONNECTION
+SARAA addresses this by:
 
-All SAR events are logged to the `audit_logs` table using your exact `AuditLog` model:
+- Reducing manual narrative drafting effort
+- Preserving complete audit trails for every transformation
+- Producing structured claim objects that map evidence to suspicious patterns
+- Supporting human review and approval before filing
 
-```python
-from backend.query_audit_trail import query_sar_trail
+---
 
-# Query SAR-specific audit trail
-audit_logs = query_sar_trail(case_id)
+# Key Features
 
-# Query pattern (from query_audit_trail.py):
-# db.query(AuditLog).filter(
-#     AuditLog.case_id == case_id,
-#     AuditLog.event_type.in_([
-#         AuditEventType.SAR_GENERATION_STARTED,
-#         AuditEventType.SAR_REPORT_GENERATED,
-#         AuditEventType.SAR_REPORT_SUBMITTED,
-#     ])
-# )
-```
+- Automated SAR narrative generation from alerts and transaction data
+- Claim object creation with rich metadata, suspicious pattern summaries, and evidence references
+- Full audit trail and lineage tracking across pipeline stages
+- Rule-based and model-assisted detection logic
+- RAG-based regulatory context retrieval for narrative support
+- Final regulatory readiness validation before output
+- Human-in-the-loop review and approval workflow
+- PostgreSQL-backed persistence for claims, audit logs, and final filing artifacts
 
-### RAG PIPELINE CONNECTION (TODO)
+---
 
-The `_generate_sar_narrative()` method is currently a placeholder. Replace it with your actual RAG pipeline + LLM integration:
+# Pipeline Architecture
 
-**Current Placeholder:**
-- Generates basic narrative from claim object fields
-- Uses `claim.regulatory_hooks` for regulatory references
-- Uses `claim.suspicious_patterns` for pattern summaries
+SARAA is organized as a modular pipeline:
 
-**Expected RAG Integration:**
-1. **RAG Retrieval:**
-   - Input: `claim.regulatory_hooks` (from Delta stage)
-   - Input: `claim.suspicious_patterns` (patterns detected)
-   - Output: Regulatory context + SAR templates
+## 1. Ingestion and Normalization
 
-2. **LLM Generation:**
-   - Input: RAG context + claim object
-   - Output: SAR narrative text
-   - Metadata: Token usage, model version, temperature
+Transaction alerts, customer KYC, account data, and case details are collected and standardized.
 
-**Integration Point:**
-```python
-# In omega_finalization.py, replace _generate_sar_narrative():
-def _generate_sar_narrative(self, claim: ClaimObject) -> Tuple[str, Dict]:
-    # TODO: Call RAG pipeline
-    rag_context = rag_service.retrieve(
-        regulatory_hooks=claim.regulatory_hooks,
-        patterns=claim.suspicious_patterns,
-    )
-    
-    # TODO: Call LLM
-    narrative = llm_service.generate(
-        prompt=build_prompt(rag_context, claim),
-        model="your-llm-model",
-    )
-    
-    return narrative, llm_metadata
-```
+## 2. KYC Enrichment
 
-## Usage Example
+Customer risk profile, account history, and related contextual signals are attached.
 
-See `example_usage.py` for a complete example showing:
-1. Delta stage claim generation
-2. Omega stage finalization
-3. Audit trail querying
+## 3. Rule Engine
 
-## File Structure
+Suspicious patterns are detected using predefined rules and typologies.
 
-```
-backend/omega/
-├── __init__.py              # Package exports
-├── omega_finalization.py    # Main Omega implementation
-├── example_usage.py         # Usage examples
-└── README.md                # This file
-```
+## 4. Claim Generation
 
-## Dependencies
+A structured claim object is created containing:
 
-- `backend.db.session.SessionLocal` - Database session factory
-- `backend.models.audit_log.AuditLog` - Audit log model
-- `claim_gen.models.claim_schema.ClaimObject` - Claim schema model
-- `claim_gen.claim_gen.generate_claim` - Claim generator function
+- Subject context
+- Suspicious behavior
+- Evidence references
+- Detection logic
 
-## Database Schema
+## 5. Narrative Generation
 
-Uses your exact `audit_logs` table schema:
-- `event_type`: `SAR_GENERATION_STARTED`, `SAR_REPORT_GENERATED`, `SAR_REPORT_SUBMITTED`
-- `case_id`: Case identifier (indexed)
-- `sar_report_content`: Generated narrative text
-- `sar_report_metadata`: Generation metadata (LLM tokens, etc.)
-- `sar_filing_number`: Filing number (if submitted)
-- `environment_data`: Complete environment snapshot (JSONB)
+The claim object is used to draft a SAR narrative in a regulatory format.
 
-## Querying Audit Trail
+## 6. OMEGA Finalization
 
-After Omega finalization, query the audit trail:
+The final narrative and audit trail are checked for readiness, retained, and stored in PostgreSQL.
 
-```python
-from backend.query_audit_trail import query_sar_trail
+---
 
-# Get all SAR events for a case
-audit_logs = query_sar_trail("sar-123")
+# Core Outputs
 
-# Or query by filing number
-from backend.query_audit_trail import query_by_filing_number
-log = query_by_filing_number("SAR-2024-0001")
-```
+SARAA produces:
 
-## Placeholders for Future Integration
+- A structured **claim object**
+- A **draft SAR narrative**
+- A **regulatory readiness assessment**
+- A **final filing bundle**
+- A **complete audit trail** for traceability and review
 
-1. **RAG Pipeline** (`_generate_sar_narrative()`):
-   - Replace placeholder with actual RAG retrieval service
-   - Use `claim.regulatory_hooks` for context retrieval
+---
 
-2. **LLM Service** (`_generate_sar_narrative()`):
-   - Replace placeholder with actual LLM API call
-   - Capture token usage and model metadata
+# Tech Stack
 
-3. **Model Configuration**:
-   - Currently uses placeholder model names
-   - Replace with actual model versions from config
+- Python
+- FastAPI
+- SQLAlchemy
+- Pydantic
+- PostgreSQL
+- LangChain
+- Llama 3.1
 
-4. **Error Handling**:
-   - Add retry logic for LLM calls
-   - Add fallback narrative generation
+---
 
-## Notes
+# How It Works
 
-- All audit events use your exact `AuditLog` model schema
-- Query patterns match your `query_audit_trail.py` implementation
-- Claim object updates follow your `claim_schema.py` structure
-- Environment data is captured exactly as provided in `omega_input`
+## 1. Input Collection
+
+SARAA receives:
+
+- Transaction alerts
+- Customer KYC data
+- Account and counterparty information
+- Rule engine outputs
+- Fraud or risk model scores
+- Regulatory context references
+
+---
+
+## 2. Claim Generation
+
+The claim generation stage converts the incoming data into a structured object containing:
+
+- Case metadata
+- Subject and account details
+- Suspicious pattern descriptions
+- Evidence set references
+- Detection logic
+- Risk assessment
+- Regulatory hooks
+- Generation trace
+- Integrity hashes
+
+---
+
+## 3. Narrative Drafting
+
+The structured claim is used to generate a SAR narrative that explains:
+
+- What happened
+- Why the activity is suspicious
+- Which patterns or typologies match
+- Which evidence supports the conclusion
+
+---
+
+## 4. Finalization
+
+The narrative and audit trail are validated for:
+
+- Regulatory completeness
+- Evidence traceability
+- Human approval readiness
+- Retention and storage requirements
+
+---
+
+# Auditability
+
+A core design goal of SARAA is complete auditability.
+
+Every transformation step is tracked, including:
+
+- Raw input capture
+- Intermediate normalization
+- Rule matches
+- Evidence mapping
+- Narrative generation inputs
+- Final approval and storage
+
+This ensures the system is defensible and transparent during compliance review.
+
+---
+
+# Regulatory Readiness
+
+Before a SAR narrative is finalized, SARAA performs a readiness check that verifies:
+
+- Narrative completeness
+- Customer identification
+- Transaction chronology
+- Evidence resolvability
+- Jurisdiction-specific formatting
+- Human approval presence
+- No leakage of sensitive data
+
+---
+
+# Human Review
+
+SARAA is not a fully autonomous filing system.
+
+It is designed to support analysts by generating a strong draft, after which a human reviewer can:
+
+- Edit the narrative
+- Approve or reject the draft
+- Add supporting notes
+- Confirm filing readiness
+
+---
+
+# Why SARAA Matters
+
+SARAA helps compliance teams move faster without sacrificing defensibility.
+
+It improves:
+
+- Consistency
+- Auditability
+- Evidence traceability
+- Operational efficiency
+
+Instead of working from fragmented source systems, reviewers receive a structured evidence-backed narrative workflow.
+
+For a hackathon project, SARAA demonstrates a strong combination of:
+
+- AI
+- Data engineering
+- Compliance logic
+- System architecture
+- Explainability-first design
+
+---
+
+# Future Enhancements
+
+Possible next steps include:
+
+- Real-time alert triage
+- Better typology classification
+- Network graph visualization of counterparties
+- Analyst feedback learning loop
+- Multi-jurisdiction filing templates
+- Automated redaction and privacy controls
