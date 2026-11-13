@@ -1,246 +1,276 @@
+<div align="center">
+
 # SARAA
 
-SARAA is an AI-powered Suspicious Activity Report narrative generation system built for banking compliance workflows. It converts transaction alerts, customer KYC, account activity, and rule-engine outputs into regulator-ready SAR narratives with full auditability, traceability, and human review support.
+### AI-Assisted Suspicious Activity Report (SAR) Narrative Generation
+
+*From transaction alerts to regulator-ready narratives, with a complete audit trail at every step.*
+
+![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-4169E1?logo=postgresql&logoColor=white)
+![LangChain](https://img.shields.io/badge/LangChain-RAG-1C3C3C)
+![ChromaDB](https://img.shields.io/badge/ChromaDB-Vector%20Store-FF6F00)
+![Status](https://img.shields.io/badge/Status-Prototype-orange)
+
+</div>
 
 ---
 
-# Overview
+## Table of Contents
 
-Financial crime compliance teams spend significant time drafting SAR narratives manually, often stitching together fragmented data from alerts, case systems, KYC records, transaction histories, and investigative notes.
-
-SARAA reduces that effort by structuring the pipeline into auditable stages:
-
-- Ingestion
-- Enrichment
-- Rule evaluation
-- Claim generation
-- Narrative drafting
-- Final compliance validation
-
-The system was designed as a hackathon-grade but production-minded solution for the Barclays Hack-O-Hire challenge. It emphasizes transparency, explainability, and end-to-end traceability so that every generated narrative can be defended during internal review or regulatory scrutiny.
+- [Overview](#overview)
+- [Problem Statement](#problem-statement)
+- [Key Features](#key-features)
+- [Pipeline Architecture](#pipeline-architecture)
+- [Project Structure](#project-structure)
+- [Tech Stack](#tech-stack)
+- [Getting Started](#getting-started)
+- [Usage](#usage)
+- [Audit Trail API](#audit-trail-api)
+- [Auditability](#auditability)
+- [Regulatory Readiness Checks](#regulatory-readiness-checks)
+- [Human Review](#human-review)
+- [Testing](#testing)
+- [Roadmap](#roadmap)
+- [Acknowledgements](#acknowledgements)
 
 ---
 
-# Problem Statement
+## Overview
 
-SAR filing is mandatory whenever banks detect suspicious activity that may indicate money laundering, fraud, or related financial crime.
+Financial crime compliance teams spend a large share of their time drafting SAR narratives by hand, stitching together fragmented data from alerts, case systems, KYC records, transaction histories and investigator notes.
 
-However, drafting the narrative is usually:
+**SARAA** structures that work into an auditable, staged pipeline:
 
-- Manual
-- Slow
-- Inconsistent
+> Ingestion → Enrichment → Rule evaluation → Claim generation → Narrative drafting (RAG) → Final compliance validation
 
-Analysts must interpret complex transaction patterns, connect them to customer context, and write a clear report that meets regulatory expectations.
+It was built for the **Barclays Hack-O-Hire** challenge as a hackathon-grade, production-minded prototype. The emphasis is on transparency, explainability and end-to-end traceability, so every generated narrative can be defended in internal review or regulatory scrutiny.
+
+## Problem Statement
+
+SAR filing is mandatory whenever a bank detects activity that may indicate money laundering, fraud or related financial crime. Drafting the narrative is typically **manual, slow and inconsistent**: analysts must interpret complex transaction patterns, connect them to customer context, and write a clear report that meets regulatory expectations.
 
 SARAA addresses this by:
 
 - Reducing manual narrative drafting effort
-- Preserving complete audit trails for every transformation
+- Preserving a complete audit trail for every transformation
 - Producing structured claim objects that map evidence to suspicious patterns
-- Supporting human review and approval before filing
+- Keeping a human reviewer in control before anything is filed
 
----
+## Key Features
 
-# Key Features
+| Feature | Description |
+|---|---|
+| **Automated narrative generation** | Drafts SAR narratives from alerts, KYC and transaction data |
+| **Structured claim objects** | Case metadata, subject context, suspicious patterns, evidence references and integrity hashes |
+| **Configurable rule engine** | YAML-defined fraud / AML rules, with every evaluation logged |
+| **RAG-based regulatory context** | Retrieves guidance, SAR templates and historical narratives from ChromaDB |
+| **Local LLM** | Narratives generated through Ollama, so no data leaves the machine |
+| **Audit trail & lineage** | Immutable, queryable logs across all pipeline stages |
+| **Regulatory readiness validation** | 10-point final check before a filing bundle is stored |
+| **Human-in-the-loop** | Analysts edit, approve or reject drafts |
+| **PostgreSQL persistence** | Stores claims, audit logs and final filing artifacts |
 
-- Automated SAR narrative generation from alerts and transaction data
-- Claim object creation with rich metadata, suspicious pattern summaries, and evidence references
-- Full audit trail and lineage tracking across pipeline stages
-- Rule-based and model-assisted detection logic
-- RAG-based regulatory context retrieval for narrative support
-- Final regulatory readiness validation before output
-- Human-in-the-loop review and approval workflow
-- PostgreSQL-backed persistence for claims, audit logs, and final filing artifacts
+## Pipeline Architecture
 
----
+```text
+ ┌───────────┐   ┌────────────┐   ┌─────────────┐   ┌──────────────┐   ┌─────────────┐   ┌──────────┐
+ │ Ingestion │ → │ Enrichment │ → │ Rule Engine │ → │ Claim        │ → │ Narrative   │ → │ OMEGA    │
+ │ & Normal- │   │ (KYC, risk │   │ (typologies │   │ Generation   │   │ (RAG + LLM) │   │ Finalize │
+ │ ization   │   │  profile)  │   │  & rules)   │   │              │   │             │   │ & Store  │
+ └───────────┘   └────────────┘   └─────────────┘   └──────────────┘   └─────────────┘   └──────────┘
+        └──────────────────────── Audit trail captured at every stage ─────────────────────────┘
+```
 
-# Pipeline Architecture
+| # | Stage | What happens |
+|---|---|---|
+| 1 | **Ingestion & Normalization** | Alerts, customer KYC, account data and case details are collected and standardized |
+| 2 | **KYC Enrichment** | Customer risk profile, account history and contextual signals are attached |
+| 3 | **Rule Engine** | Suspicious patterns are detected using predefined rules and typologies |
+| 4 | **Claim Generation** | A structured claim object is built (subject, behavior, evidence, detection logic) |
+| 5 | **Narrative Generation** | The claim plus retrieved regulatory context is used to draft the SAR narrative |
+| 6 | **OMEGA Finalization** | Narrative and audit trail are validated, retained and stored in PostgreSQL |
 
-SARAA is organized as a modular pipeline:
-
-## 1. Ingestion and Normalization
-
-Transaction alerts, customer KYC, account data, and case details are collected and standardized.
-
-## 2. KYC Enrichment
-
-Customer risk profile, account history, and related contextual signals are attached.
-
-## 3. Rule Engine
-
-Suspicious patterns are detected using predefined rules and typologies.
-
-## 4. Claim Generation
-
-A structured claim object is created containing:
-
-- Subject context
-- Suspicious behavior
-- Evidence references
-- Detection logic
-
-## 5. Narrative Generation
-
-The claim object is used to draft a SAR narrative in a regulatory format.
-
-## 6. OMEGA Finalization
-
-The final narrative and audit trail are checked for readiness, retained, and stored in PostgreSQL.
-
----
-
-# Core Outputs
-
-SARAA produces:
+### Core Outputs
 
 - A structured **claim object**
-- A **draft SAR narrative**
+- A **draft SAR narrative** (exportable as PDF)
 - A **regulatory readiness assessment**
 - A **final filing bundle**
-- A **complete audit trail** for traceability and review
+- A **complete audit trail**
 
----
+## Project Structure
 
-# Tech Stack
+```text
+SARAA/
+├── data-ingestion/        # Synthetic data generator + sample alerts, cases, KYC, transactions
+├── rule based engine/     # Rule engine, fraud models, claim evidence generator, audit service
+├── claim_gen/             # Claim object schema, population, storage and integrity hashing
+├── rag-pipeline/          # Embeddings, ChromaDB stores, retrieval + narrative generation (Streamlit)
+│   ├── docs/              #   Guidance, SAR templates and historical narratives (chunked)
+│   └── chroma_db/         #   Persisted vector stores: guidelines, templates, sars
+├── backend/               # Shared DB layer, models and the OMEGA finalization stage
+│   ├── db/                #   SQLAlchemy base, session and init_db.py
+│   ├── models/            #   AuditLog, SARFinalFiling
+│   └── omega/             #   10-point regulatory validation + filing storage
+├── audit-trail-system/    # Standalone FastAPI audit service, scripts and tests
+├── docker-compose.yml     # PostgreSQL 15 for local development
+└── .env.example           # Environment variable template
+```
 
-- Python
-- FastAPI
-- SQLAlchemy
-- Pydantic
-- PostgreSQL
-- LangChain
-- Llama 3.1
+## Tech Stack
 
----
+| Layer | Technology |
+|---|---|
+| Language | Python 3.11 |
+| API | FastAPI, Uvicorn |
+| Data & validation | SQLAlchemy 2.0, Pydantic 2 |
+| Database | PostgreSQL 15 (Docker) |
+| RAG | LangChain, ChromaDB, Sentence-Transformers (`all-MiniLM-L6-v2`, `e5-base-v2`) |
+| LLM | Ollama (currently `gemma3`; swappable, e.g. Llama 3.1) |
+| UI / export | Streamlit, ReportLab |
+| Test data | Faker |
 
-# How It Works
+## Getting Started
 
-## 1. Input Collection
+### Prerequisites
 
-SARAA receives:
+- Python 3.11+
+- Docker and Docker Compose
+- [Ollama](https://ollama.com) with a pulled model (e.g. `ollama pull gemma3`)
+- Git
 
-- Transaction alerts
-- Customer KYC data
-- Account and counterparty information
-- Rule engine outputs
-- Fraud or risk model scores
-- Regulatory context references
+### 1. Clone and configure
 
----
+```bash
+git clone https://github.com/nudaadeshmukh/SARAA.git
+cd SARAA
+cp .env.example .env        # Windows PowerShell: Copy-Item .env.example .env
+```
 
-## 2. Claim Generation
+Defaults in `.env` (edit as needed):
 
-The claim generation stage converts the incoming data into a structured object containing:
+| Variable | Default | Purpose |
+|---|---|---|
+| `POSTGRES_USER` / `POSTGRES_PASSWORD` | `user` / `password` | Database credentials |
+| `POSTGRES_DB` | `sar_audit` | Database name |
+| `POSTGRES_HOST` / `POSTGRES_PORT` | `localhost` / `5432` | Database location |
+| `DATABASE_URL` | `postgresql://user:password@localhost:5432/sar_audit` | SQLAlchemy connection string |
+| `DEBUG`, `ENVIRONMENT` | `False`, `development` | App settings |
 
-- Case metadata
-- Subject and account details
-- Suspicious pattern descriptions
-- Evidence set references
-- Detection logic
-- Risk assessment
-- Regulatory hooks
-- Generation trace
-- Integrity hashes
+> Change the default credentials before using this anywhere beyond local development.
 
----
+### 2. Start PostgreSQL and create tables
 
-## 3. Narrative Drafting
+```bash
+docker compose up -d
+python backend/db/init_db.py
+```
 
-The structured claim is used to generate a SAR narrative that explains:
+### 3. Install dependencies
 
-- What happened
-- Why the activity is suspicious
-- Which patterns or typologies match
-- Which evidence supports the conclusion
+```bash
+python -m venv venv
+source venv/bin/activate    # Windows: venv\Scripts\activate
 
----
+pip install -r audit-trail-system/requirements.txt
+pip install -r rag-pipeline/requirements.txt
+pip install -r data-ingestion/requirements.txt
+```
 
-## 4. Finalization
+## Usage
 
-The narrative and audit trail are validated for:
+### Generate sample data
 
-- Regulatory completeness
-- Evidence traceability
-- Human approval readiness
-- Retention and storage requirements
+```bash
+cd data-ingestion
+python sample_data_generator.py
+```
 
----
+Produces synthetic `customers`, `accounts`, `kyc`, `transactions`, `alerts` and `cases` JSON files in `data-ingestion/sample-data/`, covering money-laundering and fraud scenarios (layering, structuring, mule accounts, account takeover, and more).
 
-# Auditability
+### Build the vector stores (optional)
 
-A core design goal of SARAA is complete auditability.
+Pre-built ChromaDB stores are included in `rag-pipeline/chroma_db/`. To rebuild them from the chunked documents:
 
-Every transformation step is tracked, including:
+```bash
+python rag-pipeline/data-ingestion/embeddings.py
+```
+
+> `embeddings.py` currently contains absolute Windows paths (`CHROMA_DB_PATH`, `CHUNKS_FOLDERS`). Update them to your local checkout first.
+
+### Generate a narrative
+
+```bash
+cd rag-pipeline
+streamlit run retrieval.py
+```
+
+The app retrieves relevant guidance, templates and similar historical SARs, then drafts a narrative with the local LLM. Sample input is in `rag-pipeline/queries/sample-input.txt`.
+
+### Finalize and store a filing
+
+The OMEGA stage (`backend/omega/omega_finalization.py`) takes a claim object and its narrative, runs the validation checks, and writes the result to the `sar_final_filings` table.
+
+## Audit Trail API
+
+The standalone audit service in `audit-trail-system/` exposes a FastAPI router:
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/logs` | List audit logs (filterable) |
+| `GET` | `/logs/{audit_id}` | Full detail for one audit record |
+| `GET` | `/case/{case_id}/history` | All events for a case |
+| `GET` | `/case/{case_id}/sar-trail` | SAR-specific trail for a case |
+| `GET` | `/sar/filing/{filing_number}` | Look up by SAR filing number |
+| `GET` | `/user/{user_id}/activity` | Activity for a given user |
+| `GET` | `/stats` | Aggregate audit statistics |
+| `GET` | `/search` | Search audit logs |
+| `GET` | `/compliance/report` | Compliance report |
+
+See [`audit-trail-system/README.md`](audit-trail-system/README.md) and [`audit-trail-system/GETTING_STARTED.md`](audit-trail-system/GETTING_STARTED.md) for setup, seeding (`scripts/setup_audit_db.py --seed`) and querying (`scripts/query_audit_trail.py`).
+
+## Auditability
+
+Auditability is a core design goal. Every transformation step is tracked:
 
 - Raw input capture
 - Intermediate normalization
-- Rule matches
+- Rule matches and rule execution results
 - Evidence mapping
 - Narrative generation inputs
 - Final approval and storage
 
-This ensures the system is defensible and transparent during compliance review.
+Claim objects also carry a generation trace and integrity hashes, so any change after creation is detectable.
 
----
+## Regulatory Readiness Checks
 
-# Regulatory Readiness
+Before a filing is stored, OMEGA runs a 10-point validation. `regulatory_ready` is `True` only if all checks pass.
 
-Before a SAR narrative is finalized, SARAA performs a readiness check that verifies:
+| # | Check |
+|---|---|
+| 1 | Claim object is valid |
+| 2 | Narrative is not empty |
+| 3 | Narrative meets minimum length |
+| 4 | Case ID is present |
+| 5 | Alert IDs are present |
+| 6 | Subject information is complete |
+| 7 | Risk assessment is present |
+| 8 | Suspicious patterns are documented |
+| 9 | Evidence set is present |
+| 10 | Integrity hashes are valid |
 
-- Narrative completeness
-- Customer identification
-- Transaction chronology
-- Evidence resolvability
-- Jurisdiction-specific formatting
-- Human approval presence
-- No leakage of sensitive data
+## Human Review
 
----
+SARAA is **not** a fully autonomous filing system. It generates a strong, evidence-backed draft; a human reviewer then edits the narrative, approves or rejects it, adds supporting notes and confirms filing readiness.
 
-# Human Review
+## Testing
 
-SARAA is not a fully autonomous filing system.
+Tests for the audit trail system live in `audit-trail-system/tests/` (unit and integration):
 
-It is designed to support analysts by generating a strong draft, after which a human reviewer can:
-
-- Edit the narrative
-- Approve or reject the draft
-- Add supporting notes
-- Confirm filing readiness
-
----
-
-# Why SARAA Matters
-
-SARAA helps compliance teams move faster without sacrificing defensibility.
-
-It improves:
-
-- Consistency
-- Auditability
-- Evidence traceability
-- Operational efficiency
-
-Instead of working from fragmented source systems, reviewers receive a structured evidence-backed narrative workflow.
-
-For a hackathon project, SARAA demonstrates a strong combination of:
-
-- AI
-- Data engineering
-- Compliance logic
-- System architecture
-- Explainability-first design
-
----
-
-# Future Enhancements
-
-Possible next steps include:
-
-- Real-time alert triage
-- Better typology classification
-- Network graph visualization of counterparties
-- Analyst feedback learning loop
-- Multi-jurisdiction filing templates
-- Automated redaction and privacy controls
+```bash
+cd audit-trail-system
+pytest                       # configured via pytest.ini
+pytest --cov                 # with coverage
+```
