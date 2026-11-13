@@ -32,8 +32,6 @@
 - [Regulatory Readiness Checks](#regulatory-readiness-checks)
 - [Human Review](#human-review)
 - [Testing](#testing)
-- [Roadmap](#roadmap)
-- [Acknowledgements](#acknowledgements)
 
 ---
 
